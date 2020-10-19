@@ -83,7 +83,31 @@ function setup() {
     $('#menu').append($item);
   }
 
-  $('.menu-item').on('click', menuClicked);
+  const mp = window['multiplayer'] = {};
+  mp.ws = new WebSocket('wss://8080-c698324a-2947-40c6-8182-ee143afdc574.ws-eu01.gitpod.io/')
+  mp.ws.addEventListener('message', (msg) => {
+    const message = JSON.parse(msg.data);
+    switch(message.type) {
+        case 'join':
+            menuClicked(message.gameType);
+            break;
+        case 'error':
+            alert(message.error);
+            break;
+        case 'move':
+            mp.game.move(message.move.from, message.move.to);
+            break;
+    }
+  })
+  $('.menu-item').on('click', function () {
+    window['multiplayer'].role = 'host';
+    window['multiplayer'].ws.send(JSON.stringify({type: 'create', gameType: $(this).data('game'),room: $('#room').val()}));
+  });
+
+  $('#join').on('click', () => {
+    window['multiplayer'].role = 'guest';
+    window['multiplayer'].ws.send(JSON.stringify({type: 'create', room: $('#room').val()}));
+  });
 }
 
 function titleClicked () {
@@ -98,9 +122,8 @@ function titleClicked () {
   });
 }
 
-function menuClicked () {
-
-  switch ($(this).data('game')) {
+function menuClicked (game) {
+  switch (game) {
     case 'GRAVITY':
     chess = new Gravity();
     break;
@@ -154,7 +177,7 @@ function menuClicked () {
   $('.menu-item').off('click');
 
   $('#author').slideUp();
-  $('.menu-item').not(`#${$(this).data('game')}`).slideUp(500,() => {
+  $('.menu-item').not(`#${game}`).slideUp(500,() => {
     // $('#menu').hide();
     $('#game').slideDown(() => {
       // console.log("slid")
